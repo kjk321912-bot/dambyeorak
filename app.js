@@ -2,6 +2,7 @@ import { initializeApp, getAuth, onAuthStateChanged, signInWithPopup, GoogleAuth
   getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, onSnapshot,
   serverTimestamp, arrayUnion, arrayRemove, writeBatch, demo } from './backend.js';
 import { firebaseConfig } from './firebase-config.js';
+import { TEMPLATES, TEMPLATE_CATS, buildPosts } from './templates.js';
 
 const BGS = ['#bfeeff', '#ffe3ec', '#e3f7d4', '#fff2bf', '#e6ddff', '#ffffff', '#2b2d42', '#16307a'];
 const POST_COLORS = ['#ffffff', '#fff3b0', '#ffd6e0', '#d4f1c5', '#d3e5ff', '#e6dcff'];
@@ -121,7 +122,40 @@ async function renderHome() {
   $('#boards').innerHTML = `<button class="bcard bnew" id="newBoard">+ 새 보드 만들기</button>` +
     boards.map((b) => `<a class="bcard" href="#/b/${b.id}" style="background:${esc(b.bg)};${isDark(b.bg) ? 'color:#fff' : ''}">
       <b>${esc(b.title)}</b><small style="${isDark(b.bg) ? 'color:#fffa' : ''}">${LAYOUTS[b.layout] || ''}</small></a>`).join('');
-  $('#newBoard').onclick = () => boardDialog(null);
+  $('#newBoard').onclick = templateDialog;
+}
+
+/* 양식(템플릿)을 골라 새 보드 만들기 */
+function templateDialog() {
+  const d = $('#tplDialog'); let cat = '전체';
+  const draw = () => {
+    $('#tplCats').innerHTML = ['전체', ...TEMPLATE_CATS].map((c) => `<button data-cat="${c}" class="${c === cat ? 'on' : ''}">${c}</button>`).join('');
+    const list = TEMPLATES.map((t, i) => ({ t, i })).filter(({ t }) => cat === '전체' || t.cat === cat);
+    $('#tplGrid').innerHTML = `<button class="tpl blank" data-blank><span class="ti">＋</span><b>빈 보드</b><small>직접 설정하며 시작해요.</small></button>` +
+      list.map(({ t, i }) => `<button class="tpl" data-i="${i}" style="background:${t.bg}"><span class="ti">${t.icon}</span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small><em>${LAYOUTS[t.layout]}</em></button>`).join('');
+  };
+  $('#tplCats').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; draw(); } };
+  $('#tplClose').onclick = () => d.close();
+  $('#tplGrid').onclick = async (e) => {
+    const b = e.target.closest('.tpl'); if (!b) return;
+    if (b.dataset.blank !== undefined) { d.close(); return boardDialog(null); }
+    b.disabled = true;
+    try { await createFromTemplate(TEMPLATES[b.dataset.i]); d.close(); } catch (err) { b.disabled = false; alert('보드를 만들지 못했어요: ' + (err.code || err.message)); }
+  };
+  draw(); d.showModal();
+}
+
+async function createFromTemplate(t) {
+  const ref = await addDoc(collection(db, 'boards'), {
+    title: t.name, desc: t.desc, bg: t.bg, layout: t.layout, reaction: t.reaction, allowPosting: true, allowComments: true,
+    moderation: !!t.mod, showAuthor: true, sections: t.sections.map((title, i) => ({ id: 's' + (i + 1), title })),
+    ownerUid: user.uid, createdAt: serverTimestamp(),
+  });
+  const batch = writeBatch(db);
+  buildPosts(t).forEach((p) => batch.set(doc(collection(db, 'boards', ref.id, 'posts')),
+    { ...p, authorUid: user.uid, authorName: myName(), likedBy: [], approved: true, createdAt: serverTimestamp() }));
+  await batch.commit();
+  location.hash = `#/b/${ref.id}`;
 }
 
 /* ---------- 보드 입장 ---------- */

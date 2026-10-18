@@ -164,3 +164,17 @@ dialog input:not([type=file]):not([type=checkbox]),dialog textarea{width:100%}
   body{background:#fff!important}.board{padding:0}
 }
 [hidden]{display:none!important}
+
+/* ---- 양식 선택 ---- */
+#tplDialog{width:min(980px,96vw);max-height:92vh;padding:18px;overflow:auto}
+#tplDialog .slidebar h2{margin:0}
+.tplcats{margin:6px 0 14px;gap:6px}
+.tplgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.tpl{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;border-radius:14px;padding:14px;min-height:130px;border:1px solid #0001;color:var(--ink);transition:transform .12s}
+.tpl:hover{transform:translateY(-3px);box-shadow:0 4px 12px #0003}
+.tpl .ti{font-size:26px;line-height:1}
+.tpl b{font-size:16px}
+.tpl small{color:#000a;font-size:13px;line-height:1.35;flex:1}
+.tpl em{font-style:normal;font-size:12px;background:#0001;border-radius:10px;padding:1px 8px}
+.tpl.blank{background:transparent;border:2px dashed #aaa}
+.tpl:disabled{opacity:.5;cursor:wait}

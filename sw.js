@@ -1,6 +1,6 @@
 // 앱 파일을 고치면 VERSION을 올려야 설치된 기기에 새 버전이 반영된다.
-const VERSION = 'v2';
-const CORE = ['./', 'index.html', 'style.css', 'app.js', 'firebase-config.js', 'backend.js', 'mock-firebase.js', 'manifest.webmanifest',
+const VERSION = 'v3';
+const CORE = ['./', 'index.html', 'style.css', 'app.js', 'firebase-config.js', 'backend.js', 'templates.js', 'mock-firebase.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
