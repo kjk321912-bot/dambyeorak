@@ -4,7 +4,7 @@ import { initializeApp, getAuth, onAuthStateChanged, signInWithPopup, GoogleAuth
 import { firebaseConfig } from './firebase-config.js';
 import { TEMPLATES, TEMPLATE_CATS, buildPosts } from './templates.js';
 
-const BGS = ['#bfeeff', '#ffe3ec', '#e3f7d4', '#fff2bf', '#e6ddff', '#ffffff', '#2b2d42', '#16307a'];
+const BGS = ['#bfeeff', '#ffe3ec', '#e3f7d4', '#fff2bf', '#e6ddff', '#ffd9c2', '#c9f0e4', '#ffffff', '#2b2d42', '#16307a'];
 const POST_COLORS = ['#ffffff', '#fff3b0', '#ffd6e0', '#d4f1c5', '#d3e5ff', '#e6dcff'];
 const LAYOUTS = {
   wall: '벽돌', columns: '컬럼', grid: '격자', table: '테이블', canvas: '캔버스',
@@ -20,6 +20,19 @@ const $ = (s) => document.querySelector(s);
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isDark = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 < 100; };
+/* 저장된 배경색(hex)을 기준으로 색조를 살짝 돌린 색을 섞어 은은한 그라디에이션을 만든다 */
+const bgCss = (hex) => {
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let hu = 0, sa = 0;
+  if (d) {
+    sa = d / (1 - Math.abs(2 * l - 1));
+    hu = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    hu = (hu * 60 + 360) % 360;
+  }
+  const h2 = (hu + 20) % 360, s2 = Math.min(1, sa + (sa < 0.1 ? 0.2 : 0)), l2 = l < 0.35 ? Math.min(1, l + 0.1) : Math.max(0, l - (l > 0.95 ? 0.05 : 0.055));
+  return `linear-gradient(135deg, ${hex} 0%, hsl(${h2.toFixed(0)} ${(s2 * 100).toFixed(0)}% ${(l2 * 100).toFixed(0)}%) 100%)`;
+};
 const getNick = () => { try { return localStorage.getItem(NICK_KEY) || ''; } catch { return ''; } };
 const setNick = (v) => { try { localStorage.setItem(NICK_KEY, v); } catch { /* 저장 불가 환경 */ } };
 const ytId = (u) => (String(u).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([\w-]{11})/) || [])[1];
@@ -120,7 +133,7 @@ async function renderHome() {
     .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
   if (location.hash.startsWith('#/b/')) return; // 로딩 중 다른 화면으로 이동함
   $('#boards').innerHTML = `<button class="bcard bnew" id="newBoard">+ 새 보드 만들기</button>` +
-    boards.map((b) => `<a class="bcard" href="#/b/${b.id}" style="background:${esc(b.bg)};${isDark(b.bg) ? 'color:#fff' : ''}">
+    boards.map((b) => `<a class="bcard" href="#/b/${b.id}" style="background:${bgCss(b.bg)};${isDark(b.bg) ? 'color:#fff' : ''}">
       <b>${esc(b.title)}</b><small style="${isDark(b.bg) ? 'color:#fffa' : ''}">${LAYOUTS[b.layout] || ''}</small></a>`).join('');
   $('#newBoard').onclick = templateDialog;
 }
@@ -132,7 +145,7 @@ function templateDialog() {
     $('#tplCats').innerHTML = ['전체', ...TEMPLATE_CATS].map((c) => `<button data-cat="${c}" class="${c === cat ? 'on' : ''}">${c}</button>`).join('');
     const list = TEMPLATES.map((t, i) => ({ t, i })).filter(({ t }) => cat === '전체' || t.cat === cat);
     $('#tplGrid').innerHTML = `<button class="tpl blank" data-blank><span class="ti">＋</span><b>빈 보드</b><small>직접 설정하며 시작해요.</small></button>` +
-      list.map(({ t, i }) => `<button class="tpl" data-i="${i}" style="background:${t.bg}"><span class="ti">${t.icon}</span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small><em>${LAYOUTS[t.layout]}</em></button>`).join('');
+      list.map(({ t, i }) => `<button class="tpl" data-i="${i}" style="background:${bgCss(t.bg)}"><span class="ti">${t.icon}</span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small><em>${LAYOUTS[t.layout]}</em></button>`).join('');
   };
   $('#tplCats').onclick = (e) => { const b = e.target.closest('[data-cat]'); if (b) { cat = b.dataset.cat; draw(); } };
   $('#tplClose').onclick = () => d.close();
@@ -200,7 +213,7 @@ function renderBoard() {
   pendingRender = false;
   const qCaret = active?.id === 'q' ? active.selectionStart : null;
 
-  document.body.style.background = B.bg;
+  document.body.style.backgroundColor = B.bg; document.body.style.backgroundImage = bgCss(B.bg);
   const dark = isDark(B.bg), owner = isOwner();
   $('#topActions').innerHTML = `<span class="who">${esc(myName())}</span>` + (isTeacher() ? `<button id="out">로그아웃</button>` : '');
   $('#out')?.addEventListener('click', () => signOut(auth));
@@ -582,8 +595,8 @@ async function deleteBoard() {
 }
 
 /* ---------- 다이얼로그 ---------- */
-function swatches(host, colors, current) {
-  host.innerHTML = colors.map((c) => `<button type="button" class="sw ${c === current ? 'sel' : ''}" data-c="${c}" style="background:${c}"></button>`).join('');
+function swatches(host, colors, current, paint = (c) => c) {
+  host.innerHTML = colors.map((c) => `<button type="button" class="sw ${c === current ? 'sel' : ''}" data-c="${c}" style="background:${paint(c)}"></button>`).join('');
   host.onclick = (e) => {
     const s = e.target.closest('.sw'); if (!s) return;
     host.querySelectorAll('.sw').forEach((x) => x.classList.toggle('sel', x === s));
@@ -598,7 +611,7 @@ function boardDialog(b) {
   f.title.value = b?.title || ''; f.desc.value = b?.desc || ''; f.layout.value = b?.layout || 'wall'; f.reaction.value = b?.reaction || 'like';
   f.allowPosting.checked = b ? !!b.allowPosting : true; f.allowComments.checked = b?.allowComments !== false;
   f.moderation.checked = !!b?.moderation; f.showAuthor.checked = b?.showAuthor !== false;
-  swatches($('#bgPick'), BGS, b?.bg || BGS[0]);
+  swatches($('#bgPick'), BGS, b?.bg || BGS[0], bgCss);
   $('#boardCancel').onclick = () => d.close();
   f.onsubmit = async () => {
     const data = {
