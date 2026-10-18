@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>담벼락 - 공동작업 보드</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2b6cb0">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="#/">담벼락</a>
+  <div id="topActions"></div>
+</header>
+<main id="app"></main>
+
+<dialog id="postDialog">
+  <form method="dialog" id="postForm">
+    <h2 id="postDialogTitle">게시물 작성</h2>
+    <input name="title" placeholder="제목" maxlength="100">
+    <textarea name="body" placeholder="내용을 입력하세요" rows="5"></textarea>
+    <input name="link" type="url" placeholder="링크 (https://... 유튜브 주소는 영상으로 보여요)">
+    <label class="filebtn">이미지 첨부 <input name="img" type="file" accept="image/*" hidden></label>
+    <button type="button" class="ghost" id="imgClear" hidden>이미지 빼기</button>
+    <img id="imgPreview" alt="" hidden>
+    <label class="field" id="secWrap" hidden>섹션 <select name="section"></select></label>
+    <label class="field" id="dateWrap" hidden>날짜·시간 <input name="date" type="datetime-local"></label>
+    <div id="pickWrap" hidden>
+      <input name="place" placeholder="장소 이름 (선택)" maxlength="60">
+      <div id="pickMap"></div>
+      <div class="row"><small>지도를 눌러 위치를 정하세요.</small><button type="button" class="ghost" id="pickClear">위치 지우기</button></div>
+    </div>
+    <div class="colors" id="colorPick"></div>
+    <div class="row end">
+      <button type="button" class="ghost" id="postCancel">취소</button>
+      <button type="submit" class="primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="boardDialog">
+  <form method="dialog" id="boardForm">
+    <h2 id="boardDialogTitle">보드 설정</h2>
+    <input name="title" placeholder="보드 제목" maxlength="60" required>
+    <textarea name="desc" placeholder="설명 (선택)" rows="2"></textarea>
+    <label class="field">레이아웃 <select name="layout"></select></label>
+    <label class="field">반응 방식
+      <select name="reaction"><option value="like">좋아요 ♥</option><option value="star">별점 ★</option><option value="none">사용 안 함</option></select>
+    </label>
+    <label class="check"><input type="checkbox" name="allowPosting" checked> 학생이 게시물을 올릴 수 있음</label>
+    <label class="check"><input type="checkbox" name="allowComments" checked> 댓글 허용</label>
+    <label class="check"><input type="checkbox" name="moderation"> 학생 게시물은 선생님이 승인한 뒤에 보이기</label>
+    <label class="check"><input type="checkbox" name="showAuthor" checked> 작성자 이름 보이기</label>
+    <div class="colors" id="bgPick"></div>
+    <div class="row end">
+      <button type="button" class="ghost" id="boardCancel">취소</button>
+      <button type="submit" class="primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="shareDialog">
+  <h2>보드 공유</h2>
+  <p class="hint">학생에게 이 링크나 QR코드를 보여 주세요. 학생은 닉네임만 입력하면 들어올 수 있어요.</p>
+  <input id="shareLink" readonly>
+  <div id="qr"></div>
+  <div class="row end"><button id="shareCopy" class="primary">링크 복사</button><button id="shareClose" class="ghost">닫기</button></div>
+</dialog>
+
+<dialog id="slideDialog">
+  <div class="slidebar"><span id="slideNo"></span><button id="slideClose" class="ghost">닫기 ✕</button></div>
+  <div id="slideBody"></div>
+  <div class="slidenav"><button id="slidePrev">◀ 이전</button><button id="slideNext">다음 ▶</button></div>
+</dialog>
+<script type="module" src="app.js"></script>
+</body>
+</html>

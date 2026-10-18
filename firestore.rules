@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isTeacher() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function boardData(b) { return get(/databases/$(db)/documents/boards/$(b)).data; }
+    function isOwner(b) { return signedIn() && boardData(b).ownerUid == request.auth.uid; }
+    function canWrite(b) { return isOwner(b) || boardData(b).allowPosting == true; }
+    function canComment(b) { return canWrite(b) && boardData(b).get('allowComments', true) == true; }
+    // 승인제 보드에서는 학생 게시물이 approved:false 로만 만들어진다
+    function approvedOk(b) { return isOwner(b) || request.resource.data.approved == (boardData(b).get('moderation', false) != true); }
+
+    match /boards/{b} {
+      // 보드 문서는 id(링크)를 아는 로그인 사용자만 읽고, 목록 조회는 본인 보드만 가능
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isTeacher() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /posts/{p} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.authorUid == request.auth.uid && canWrite(b) && approvedOk(b);
+        allow update: if signedIn() && request.resource.data.authorUid == resource.data.authorUid && (
+                        isOwner(b)
+                        // 작성자는 자기 글을 고칠 수 있지만 승인 여부(approved)는 바꿀 수 없다
+                        || (resource.data.authorUid == request.auth.uid
+                            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']))
+                        // 좋아요·별점은 누구나 (likedBy, ratings 필드만 변경 가능)
+                        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'ratings']));
+        allow delete: if signedIn() && (resource.data.authorUid == request.auth.uid || isOwner(b));
+      }
+
+      match /comments/{c} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.authorUid == request.auth.uid && canComment(b);
+        allow delete: if signedIn() && (resource.data.authorUid == request.auth.uid || isOwner(b));
+      }
+    }
+  }
+}
