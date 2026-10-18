@@ -4,7 +4,7 @@
 
 ## 지금 상태
 - 앱 기능 구현 완료: 레이아웃 9종, 섹션, 슬라이드쇼, 검색, 승인제, 별점, 복제, CSV, QR 공유, PWA
-- 새 보드를 만들 때 고르는 양식(템플릿) 35종 추가: `templates.js` (패들렛 갤러리 예시를 종류별로 분류해 수업용으로 새로 구성). 양식을 더하려면 이 파일의 `TEMPLATES`에 항목을 추가한다.
+- 새 보드를 만들 때 고르는 양식(템플릿) 36종 추가: `templates.js` (패들렛 갤러리 예시를 종류별로 분류해 수업용으로 새로 구성). 양식을 더하려면 이 파일의 `TEMPLATES`에 항목을 추가한다.
 - Firebase 연결 완료. 선생님 구글 로그인으로 보드 만들기·게시물 쓰기·좋아요까지 로컬에서 확인함
 - GitHub 저장소(공개): https://github.com/kjk321912-bot/dambyeorak
 - GitHub Pages 배포 주소: https://kjk321912-bot.github.io/dambyeorak/ (main 브랜치 루트, push하면 1~2분 안에 반영)
