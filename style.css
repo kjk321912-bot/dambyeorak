@@ -178,3 +178,11 @@ dialog input:not([type=file]):not([type=checkbox]),dialog textarea{width:100%}
 .tpl em{font-style:normal;font-size:12px;background:#0001;border-radius:10px;padding:1px 8px}
 .tpl.blank{background:transparent;border:2px dashed #aaa}
 .tpl:disabled{opacity:.5;cursor:wait}
+
+/* ---- 판서 ---- */
+#drawDialog{width:min(1100px,98vw);padding:12px;max-height:98vh;overflow:auto}
+.drawbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:8px}
+.drawbar .row{gap:6px}
+.drawbar .sw.on{outline:3px solid var(--ink);outline-offset:2px}
+#drawCv{display:block;width:min(100%,calc((100vh - 170px) * 12 / 7));margin:0 auto 8px;aspect-ratio:12/7;border-radius:10px;border:1px solid var(--line);touch-action:none;cursor:crosshair;background:#fff;margin-bottom:8px}
+.fab2{bottom:92px;background:#fff;color:var(--ink);font-size:24px}

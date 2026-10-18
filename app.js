@@ -232,7 +232,7 @@ function renderBoard() {
       </div></div>
     ${owner ? `<div class="layouts row">${Object.entries(LAYOUTS).map(([k, v]) => `<button data-l="${k}" class="${B.layout === k ? 'on' : ''}">${v}</button>`).join('')}</div>` : ''}
     <div id="posts" class="posts"></div>
-    ${locked ? '' : '<button class="fab primary" id="addPost" title="게시물 추가">+</button>'}</section>`;
+    ${locked ? '' : '<button class="fab fab2" id="addDraw" title="판서·그림">✏️</button><button class="fab primary" id="addPost" title="게시물 추가">+</button>'}</section>`;
 
   if ($('#sort')) $('#sort').value = ui.sort;
   $('#sort')?.addEventListener('change', (e) => { ui.sort = e.target.value; fillPosts(); });
@@ -240,6 +240,7 @@ function renderBoard() {
   $('#slide').onclick = slideshow;
   $('#share').onclick = shareDialog;
   $('#addPost')?.addEventListener('click', () => postDialog(null));
+  $('#addDraw')?.addEventListener('click', () => drawDialog('', (img) => postDialog(null, { img, title: '판서' })));
   document.querySelectorAll('[data-l]').forEach((el) => el.onclick = () => updateDoc(doc(db, 'boards', B.id), { layout: el.dataset.l }));
   if (owner) {
     $('#bset').onclick = () => boardDialog(B);
@@ -630,15 +631,16 @@ function boardDialog(b) {
 let pickInst = null;
 function postDialog(p, preset = {}) {
   const d = $('#postDialog'), f = $('#postForm'), prev = $('#imgPreview');
-  let img = p?.img || '', ll = p?.lat != null ? [p.lat, p.lng] : preset.lat != null ? [preset.lat, preset.lng] : null;
+  let img = p?.img || preset.img || '', ll = p?.lat != null ? [p.lat, p.lng] : preset.lat != null ? [preset.lat, preset.lng] : null;
   $('#postDialogTitle').textContent = p ? '게시물 수정' : '게시물 작성';
-  f.title.value = p?.title || ''; f.body.value = p?.body || ''; f.link.value = p?.link || '';
+  f.title.value = p?.title || preset.title || ''; f.body.value = p?.body || ''; f.link.value = p?.link || '';
   const showImg = () => { prev.hidden = !img; prev.src = img; $('#imgClear').hidden = !img; };
   showImg();
   swatches($('#colorPick'), POST_COLORS, p?.color || POST_COLORS[0]);
   f.img.value = '';
   f.img.onchange = async () => { const file = f.img.files[0]; if (file) { img = await shrink(file); showImg(); } };
   $('#imgClear').onclick = () => { img = ''; f.img.value = ''; showImg(); };
+  $('#drawBtn').onclick = () => drawDialog(img, (out) => { img = out; showImg(); });
 
   const ss = secs();
   $('#secWrap').hidden = ss.length < 2;
@@ -679,6 +681,101 @@ function postDialog(p, preset = {}) {
     } catch (e) { alert('저장하지 못했어요: ' + (e.code || e.message)); }
   };
   d.showModal();
+}
+
+/* ---------- 판서·그림 ---------- */
+const DRAW_COLORS = ['#111111', '#ffffff', '#e53935', '#1e88e5', '#43a047', '#fdd835', '#8e24aa'];
+function drawDialog(base, done) {
+  const d = $('#drawDialog'), cv = $('#drawCv'), ctx = cv.getContext('2d');
+  const W = 1200, H = 700;
+  cv.width = W; cv.height = H;
+  const ink = document.createElement('canvas'); ink.width = W; ink.height = H;
+  const ic = ink.getContext('2d');
+  let strokes = [], cur = null, color = DRAW_COLORS[0], width = 6, erase = false, bg = 'white', baseImg = null;
+
+  const paintBg = () => {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = bg === 'board' ? '#1f3b2d' : '#ffffff'; ctx.fillRect(0, 0, W, H);
+    if (baseImg) {
+      const r = Math.min(W / baseImg.width, H / baseImg.height), w = baseImg.width * r, h = baseImg.height * r;
+      ctx.drawImage(baseImg, (W - w) / 2, (H - h) / 2, w, h);
+    }
+    if (bg === 'grid') {
+      ctx.strokeStyle = '#cfd8e8'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = 0; x <= W; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0; y <= H; y += 40) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+    }
+  };
+  const render = () => { paintBg(); ctx.drawImage(ink, 0, 0); };
+  // 지우개는 그림 층에서만 지워서 배경(이미지)은 남는다
+  const line = (s, from) => {
+    ic.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over';
+    ic.strokeStyle = s.color; ic.fillStyle = s.color; ic.lineWidth = s.erase ? s.w * 3 : s.w; ic.lineCap = 'round'; ic.lineJoin = 'round';
+    const pts = s.pts;
+    if (pts.length === 1) { ic.beginPath(); ic.arc(pts[0][0], pts[0][1], ic.lineWidth / 2, 0, Math.PI * 2); ic.fill(); return; }
+    ic.beginPath(); ic.moveTo(...pts[Math.max(0, from - 1)]);
+    for (let i = Math.max(1, from); i < pts.length; i++) {
+      const [x, y] = pts[i], [px, py] = pts[i - 1];
+      ic.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2);
+    }
+    ic.stroke();
+  };
+  const rebuild = () => { ic.clearRect(0, 0, W, H); strokes.forEach((s) => line(s, 1)); render(); };
+  const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+
+  cv.onpointerdown = (e) => {
+    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    cur = { color, w: width, erase, pts: [at(e)] }; line(cur, 1); render();
+  };
+  cv.onpointermove = (e) => {
+    if (!cur) return;
+    cur.pts.push(at(e)); line(cur, Math.max(1, cur.pts.length - 2)); render();
+  };
+  cv.onpointerup = cv.onpointercancel = () => { if (cur) { strokes.push(cur); cur = null; } };
+
+  $('#drawColors').innerHTML = DRAW_COLORS.map((c) => `<button class="sw" data-c="${c}" style="background:${c}"></button>`).join('');
+  const mark = (host, sel, on) => host.querySelectorAll(sel).forEach((b) => b.classList.toggle('on', on(b)));
+  const syncColor = () => {
+    mark($('#drawColors'), '.sw', (b) => !erase && b.dataset.c === color);
+    $('#drawErase').classList.toggle('on', erase);
+  };
+  $('#drawColors').onclick = (e) => { const b = e.target.closest('.sw'); if (b) { color = b.dataset.c; erase = false; syncColor(); } };
+  $('#drawSizes').onclick = (e) => { const b = e.target.closest('[data-w]'); if (b) { width = +b.dataset.w; mark($('#drawSizes'), '[data-w]', (x) => x === b); } };
+  $('#drawErase').onclick = () => { erase = !erase; syncColor(); };
+  $('#drawUndo').onclick = () => { strokes.pop(); rebuild(); };
+  $('#drawClear').onclick = () => { if (!strokes.length || confirm('그린 내용을 모두 지울까요?')) { strokes = []; rebuild(); } };
+  $('#drawBgs').onclick = (e) => {
+    const b = e.target.closest('[data-bg]'); if (!b) return;
+    bg = b.dataset.bg; mark($('#drawBgs'), '[data-bg]', (x) => x === b);
+    if (bg === 'board' && color === '#111111') color = '#ffffff';
+    else if (bg !== 'board' && color === '#ffffff') color = '#111111';
+    syncColor(); render();
+  };
+
+  // 현재 그림을 저장용 이미지로 만든다. Firestore 문서 한도(1MB)를 넘지 않게 가로 900px로 줄인다.
+  const result = () => {
+    const out = document.createElement('canvas'), r = 900 / W; out.width = 900; out.height = Math.round(H * r);
+    out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height);
+    let url = out.toDataURL('image/png');
+    if (url.length > 850000) url = out.toDataURL('image/jpeg', 0.7);
+    return url;
+  };
+  $('#drawSave').onclick = () => {
+    const a = document.createElement('a'); a.href = cv.toDataURL('image/png');
+    a.download = `판서_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.png`; a.click();
+  };
+  $('#drawCancel').onclick = () => d.close();
+  $('#drawDone').onclick = () => {
+    const url = result();
+    if (url.length > 900000) return alert('그림이 너무 커요. 내용을 줄이거나 "PC에 저장"을 사용해 주세요.');
+    d.close(); done(url);
+  };
+
+  mark($('#drawSizes'), '[data-w]', (b) => +b.dataset.w === width); mark($('#drawBgs'), '[data-bg]', (b) => b.dataset.bg === bg); syncColor();
+  render();
+  d.showModal();
+  if (base) { const im = new Image(); im.onload = () => { baseImg = im; render(); }; im.src = base; }
 }
 
 /* Firestore 문서 한도(1MB)를 넘지 않도록 가로 600px JPEG로 줄인다 */

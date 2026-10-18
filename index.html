@@ -25,6 +25,7 @@
     <input name="link" type="url" placeholder="링크 (https://... 유튜브 주소는 영상으로 보여요)">
     <label class="filebtn">이미지 첨부 <input name="img" type="file" accept="image/*" hidden></label>
     <button type="button" class="ghost" id="imgClear" hidden>이미지 빼기</button>
+    <button type="button" class="ghost" id="drawBtn">✏️ 그림·판서</button>
     <img id="imgPreview" alt="" hidden>
     <label class="field" id="secWrap" hidden>섹션 <select name="section"></select></label>
     <label class="field" id="dateWrap" hidden>날짜·시간 <input name="date" type="datetime-local"></label>
@@ -60,6 +61,23 @@
       <button type="submit" class="primary">저장</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="drawDialog">
+  <div class="drawbar">
+    <div class="row" id="drawColors"></div>
+    <div class="row" id="drawSizes">
+      <button data-w="3">가늘게</button><button data-w="6" class="on">보통</button><button data-w="14">굵게</button>
+    </div>
+    <div class="row">
+      <button id="drawErase">지우개</button><button id="drawUndo">↶ 되돌리기</button><button id="drawClear">전체 지우기</button>
+    </div>
+    <div class="row" id="drawBgs">
+      <button data-bg="white" class="on">흰 판</button><button data-bg="board">칠판</button><button data-bg="grid">모눈</button>
+    </div>
+  </div>
+  <canvas id="drawCv"></canvas>
+  <div class="row end"><button id="drawSave" class="ghost">PC에 저장</button><button id="drawCancel" class="ghost">취소</button><button id="drawDone" class="primary">완료</button></div>
 </dialog>
 
 <dialog id="tplDialog">
